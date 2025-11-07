@@ -1,0 +1,99 @@
+services:
+  # Temporal сервис (для оркестрации workflow)
+  temporal:
+    image: temporalio/auto-setup:1.22.0
+    container_name: temporal-server
+    ports:
+      - "${TEMPORAL_PORT}:7233"  # Temporal gRPC
+    environment:
+      - DB=postgresql
+      - DB_PORT=${POSTGRES_PORT}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PWD=${POSTGRES_PASSWORD}
+      - POSTGRES_SEEDS=temporal-postgresql
+      - SKIP_DEFAULT_NAMESPACE_CREATION=false
+    depends_on:
+      - temporal-postgresql
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Temporal UI (веб-интерфейс)
+  temporal-ui:
+    image: temporalio/ui:2.21.4
+    container_name: temporal-ui
+    ports:
+      - "${TEMPORAL_UI_PORT}:8080"  # Temporal UI
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
+    depends_on:
+      - temporal
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # PostgreSQL для Temporal
+  temporal-postgresql:
+    image: postgres:15-alpine
+    container_name: temporal-postgresql
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - temporal-postgres-data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # ClickHouse база данных
+  clickhouse:
+    image: clickhouse/clickhouse-server:23.11-alpine
+    container_name: clickhouse
+    ports:
+      - "${CLICKHOUSE_PORT}:8123"  # HTTP интерфейс
+      - "${CLICKHOUSE_NATIVE_PORT}:9000"  # Native протокол
+    environment:
+      - CLICKHOUSE_DB=${CLICKHOUSE_DATABASE}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+      - clickhouse-logs:/var/log/clickhouse-server
+    networks:
+      - app-network
+    restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+
+  # ClickHouse UI (Tabix)
+  clickhouse-ui:
+    image: spoonest/clickhouse-tabix-web-client:latest
+    container_name: clickhouse-ui
+    ports:
+      - "${CLICKHOUSE_UI_PORT}:80"  # ClickHouse UI
+    environment:
+      - CH_HOST=clickhouse
+      - CH_PORT=8123
+      - CH_USER=${CLICKHOUSE_USER}
+      - CH_PASSWORD=${CLICKHOUSE_PASSWORD}
+    depends_on:
+      - clickhouse
+    networks:
+      - app-network
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  temporal-postgres-data:
+  clickhouse-data:
+  clickhouse-logs:
+

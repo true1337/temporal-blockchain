@@ -1,0 +1,36 @@
+{
+  "name": "typescript-study",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "TypeScript проект для изучения",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node --esm src/index.ts",
+    "watch": "tsc --watch",
+    "hello": "ts-node --esm src/hello-world.ts",
+    "fetch-events": "ts-node --esm src/fetch-events-to-json.ts",
+    "worker": "ts-node --esm src/temporal/worker.ts",
+    "start-workflow": "ts-node --esm src/temporal/client.ts"
+  },
+  "keywords": [
+    "typescript",
+    "study"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@clickhouse/client": "^0.2.5",
+    "@temporalio/client": "^1.8.0",
+    "@temporalio/worker": "^1.8.0",
+    "@temporalio/workflow": "^1.8.0",
+    "dotenv": "^17.2.3",
+    "viem": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}

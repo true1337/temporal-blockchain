@@ -1,0 +1,18 @@
+{
+  "addresses": {
+    "wallet": "0x...",
+    "usdcContract": "0x..."
+  },
+  "network": {
+    "name": "ethereum-mainnet",
+    "chainId": 1
+  },
+  "temporal": {
+    "taskQueue": "usdc-transfer-queue",
+    "namespace": "default"
+  },
+  "clickhouse": {
+    "database": "default"
+  }
+}
+
