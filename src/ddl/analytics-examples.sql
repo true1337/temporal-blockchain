@@ -5,7 +5,7 @@ SELECT
     sum(receipt_gas_used * toUInt64(receipt_effective_gas_price)) / 1e18 as gas_cost_eth,
     sum(receipt_gas_used * toUInt64(receipt_effective_gas_price)) as gas_cost_wei
 FROM debridge.usdc_transactions
-WHERE from_address = '0xef4fb24ad0916217251f553c0596f8edc630eb66'
+WHERE from_address = '0xeF4fB24aD0916217251F553c0596F8Edc630EB66'
 GROUP BY date, address
 ORDER BY date
 
@@ -15,7 +15,7 @@ WITH daily_avg_gas_price AS (
         toDate(timestamp) as date,
         avg(toUInt64(receipt_effective_gas_price)) as avg_gas_price_wei
     FROM debridge.usdc_transactions
-    WHERE from_address = '0xef4fb24ad0916217251f553c0596f8edc630eb66'
+    WHERE from_address = '0xeF4fB24aD0916217251F553c0596F8Edc630EB66'
     GROUP BY date
 )
 SELECT 
@@ -34,7 +34,7 @@ WITH daily_gas_cost AS (
         toDate(timestamp) as date,
         sum(receipt_gas_used * toUInt64(receipt_effective_gas_price)) / 1e18 as daily_gas_cost_eth
     FROM debridge.usdc_transactions
-    WHERE from_address = '0xef4fb24ad0916217251f553c0596f8edc630eb66'
+    WHERE from_address = '0xeF4fB24aD0916217251F553c0596F8Edc630EB66'
     GROUP BY date
 )
 SELECT 
@@ -56,7 +56,7 @@ SELECT
     max(toDate(timestamp)) as period_end,
     sum(receipt_gas_used * toUInt64(receipt_effective_gas_price)) / 1e18 as total_gas_cost_eth
 FROM debridge.usdc_transactions
-WHERE from_address = '0xef4fb24ad0916217251f553c0596f8edc630eb66'
+WHERE from_address = '0xeF4fB24aD0916217251F553c0596F8Edc630EB66'
 GROUP BY address
 
 -- 5. Combined query with all metrics (similar to analyzeBatch)
@@ -69,7 +69,7 @@ WITH daily_metrics AS (
         sum(receipt_gas_used * toUInt64(receipt_effective_gas_price)) / 1e18 as gas_cost_eth,
         avg(toUInt64(receipt_effective_gas_price)) as avg_effective_gas_price
     FROM debridge.usdc_transactions
-    WHERE from_address = '0xef4fb24ad0916217251f553c0596f8edc630eb66'
+    WHERE from_address = '0xeF4fB24aD0916217251F553c0596F8Edc630EB66'
     GROUP BY date, address
 ),
 ma7_data AS (
