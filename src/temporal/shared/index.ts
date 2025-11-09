@@ -5,7 +5,6 @@ export { Retry, withRetry, createRetryWrapper, type RetryOptions } from './retry
 export { createTransactionsTable } from './load-ddl.ts';
 export { 
   getEthereumClient, 
-  createEthereumClient, 
   type EthereumClientWrapper
 } from './ethereum-client.ts';
 

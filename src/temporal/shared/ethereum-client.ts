@@ -62,41 +62,6 @@ class EthereumClientWrapper {
   async getBlockNumber() {
     return this.retryWrapper(() => this.client.getBlockNumber());
   }
-
-  /**
-   * Gets transaction by hash with retry
-   */
-  async getTransaction(args: Parameters<PublicClient['getTransaction']>[0]) {
-    return this.retryWrapper(() => this.client.getTransaction(args));
-  }
-
-  /**
-   * Gets address balance with retry
-   */
-  async getBalance(args: Parameters<PublicClient['getBalance']>[0]) {
-    return this.retryWrapper(() => this.client.getBalance(args));
-  }
-
-  /**
-   * Gets contract code with retry
-   */
-  async getCode(args: Parameters<PublicClient['getCode']>[0]) {
-    return this.retryWrapper(() => this.client.getCode(args));
-  }
-
-  /**
-   * Reads data from contract with retry
-   */
-  async readContract(args: Parameters<PublicClient['readContract']>[0]) {
-    return this.retryWrapper(() => this.client.readContract(args));
-  }
-
-  /**
-   * Gets access to original client (for methods that are not wrapped)
-   */
-  get rawClient(): PublicClient {
-    return this.client;
-  }
 }
 
 // Create singleton instance with default settings
@@ -114,17 +79,6 @@ export function getEthereumClient(
     defaultClient = new EthereumClientWrapper(chain, rpcUrl, retryOptions);
   }
   return defaultClient;
-}
-
-/**
- * Creates a new instance of Ethereum client
- */
-export function createEthereumClient(
-  chain?: Chain,
-  rpcUrl?: string,
-  retryOptions?: RetryOptions
-): EthereumClientWrapper {
-  return new EthereumClientWrapper(chain, rpcUrl, retryOptions);
 }
 
 // Export type for convenience
