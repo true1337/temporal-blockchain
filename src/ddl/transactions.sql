@@ -11,11 +11,11 @@ CREATE TABLE IF NOT EXISTS debridge.usdc_transactions (
   -- Поля для data analysis
   from_address String,
   to_address String,
-  timestamp DateTime,
+  timestamp DateTime64(3),
   receipt_gas_used UInt64,
   receipt_effective_gas_price String,
   
-  updated_at DateTime DEFAULT now()
+  updated_at DateTime64(3) DEFAULT now64()
 ) ENGINE = MergeTree()
 ORDER BY (transaction_hash, block_number)
 PARTITION BY toYYYYMM(timestamp)

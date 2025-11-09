@@ -8,7 +8,8 @@ import {
   getWalletAddress,
   getUsdcContractAddress,
   getInitialFromBlock,
-  getBatchSize
+  getBatchSize,
+  getTableName
 } from '../config.ts';
 
 async function startWorkflow() {
@@ -35,6 +36,7 @@ async function startWorkflow() {
     usdcContractAddress,
     initialFromBlock: getInitialFromBlock(), // Initial block for first run (from config.json)
     batchSize: getBatchSize(), // Batch size from config.json
+    tableName: getTableName(), // Table name from config.json
   };
 
   console.log('🚀 Starting Transfer events export workflow...');

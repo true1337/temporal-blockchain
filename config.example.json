@@ -16,7 +16,7 @@
   },
   "workflow": {
     "initialFromBlock": "23534906",
-    "batchSize": 5000
+    "batchSize": 1000
   }
 }
 

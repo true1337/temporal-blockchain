@@ -51,7 +51,7 @@ export async function createTransactionsTable(): Promise<void> {
     // Small delay for synchronization
     await new Promise(resolve => setTimeout(resolve, 200));
     
-    // 2. Create table
+    // 2. Create table (simplified schema with DateTime64(3))
     await executeQuery(
       clickhouseClient,
       `CREATE TABLE IF NOT EXISTS debridge.usdc_transactions (
@@ -59,25 +59,13 @@ export async function createTransactionsTable(): Promise<void> {
         transaction_hash String,
         from_address String,
         to_address String,
-        value String,
-        timestamp DateTime,
-        receipt_block_hash String,
-        receipt_block_number UInt64,
-        receipt_contract_address Nullable(String),
-        receipt_cumulative_gas_used UInt64,
-        receipt_effective_gas_price String,
-        receipt_from String,
+        timestamp DateTime64(3),
         receipt_gas_used UInt64,
-        receipt_logs_bloom String,
-        receipt_status String,
-        receipt_to Nullable(String),
-        receipt_transaction_index UInt32,
-        receipt_type String,
-        receipt_logs String,
-        updated_at DateTime DEFAULT now()
-      ) ENGINE = ReplacingMergeTree(updated_at)
+        receipt_effective_gas_price String,
+        updated_at DateTime64(3) DEFAULT now64()
+      ) ENGINE = MergeTree()
       ORDER BY (transaction_hash, block_number)
-      PARTITION BY intDiv(block_number, 100000)
+      PARTITION BY toYYYYMM(timestamp)
       SETTINGS index_granularity = 8192`,
       'Creating table debridge.usdc_transactions'
     );

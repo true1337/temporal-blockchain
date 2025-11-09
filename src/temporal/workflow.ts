@@ -17,10 +17,9 @@ const {
   },
 });
 
-// Slow activities (fetching events, saving)
+// Slow activities (fetching events - saves to ClickHouse internally)
 const {
-  fetchTransferEvents,
-  saveToClickHouse
+  fetchTransferEvents
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: '1 hour', // Increased for processing large batches
   retry: {
@@ -36,7 +35,8 @@ export type TransferExportParams = {
   usdcContractAddress: string;
   lastProcessedBlock?: string; // Last processed block (deterministic state from workflow)
   initialFromBlock?: string; // Initial block for first run (fallback if lastProcessedBlock not provided)
-  batchSize?: number; // Batch size of blocks to process (default 10000)
+  batchSize?: number; // Batch size of blocks to process (default 5000)
+  tableName: string; // ClickHouse table name
 };
 
 // Main infinite workflow
@@ -84,20 +84,20 @@ export async function exportTransferEventsWorkflow(
       console.log(`📦 Iteration ${iteration}: processing blocks ${currentBlock.toString()} - ${actualToBlock.toString()}`);
       
       try {
-        // Fetch events for this batch
+        // Fetch events for this batch and save them directly to ClickHouse
+        // Events are saved incrementally inside fetchTransferEvents to avoid Temporal 4MB limit
         const eventAbi = parseAbiItem('event Transfer(address indexed from, address indexed to, uint256 value)');
-        const events = await fetchTransferEvents({
+        const eventsCount = await fetchTransferEvents({
           walletAddress: params.walletAddress,
           usdcContractAddress: params.usdcContractAddress,
           fromBlock: currentBlock.toString(),
           toBlock: actualToBlock.toString(),
           eventAbi,
+          tableName: params.tableName,
         });
         
-        if (events.length > 0) {
-          // Save events to ClickHouse
-          await saveToClickHouse(events);
-          console.log(`✅ Processed ${events.length} events from blocks ${currentBlock.toString()} - ${actualToBlock.toString()}`);
+        if (eventsCount > 0) {
+          console.log(`✅ Processed ${eventsCount} events from blocks ${currentBlock.toString()} - ${actualToBlock.toString()}`);
         }
         
         // Update progress (deterministic state - no DB write needed)

@@ -21,6 +21,7 @@ type Config = {
   };
   clickhouse: {
     database: string;
+    tableName: string;
   };
   workflow: {
     initialFromBlock: string;
@@ -117,5 +118,12 @@ export function getInitialFromBlock(): string {
  */
 export function getBatchSize(): number {
   return loadConfig().workflow.batchSize;
+}
+
+/**
+ * Получает название таблицы ClickHouse из конфига
+ */
+export function getTableName(): string {
+  return loadConfig().clickhouse.tableName;
 }
 

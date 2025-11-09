@@ -43,5 +43,6 @@ export type FetchEventsParams = {
   fromBlock: string; // bigint is passed as string
   toBlock: string;  // bigint is passed as string
   eventAbi: import('viem').AbiEvent; // Event ABI
+  tableName: string; // ClickHouse table name
 };
 

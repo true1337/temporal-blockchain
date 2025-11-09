@@ -108,6 +108,7 @@ for small query ranges. This can lead to:
 #### 3. Temporal 4MB Message Size Limit
 - **Issue**: Temporal has a default message size limit of 4MB for workflow history and activity results. 
 When processing large batches of events, passing all events through workflow state can exceed this limit.
+- **Example**: 2500 events from 10,000 blocks exceed the default message size by ~7x (approximately 28MB vs 4MB limit)
 - **Impact**: 
   - Cannot pass large arrays of events directly from activity to workflow
   - Requires optimization to reduce data size
@@ -116,6 +117,12 @@ When processing large batches of events, passing all events through workflow sta
   - Kept only necessary fields: keys (block_number, transaction_hash) and fields for data analysis (from_address, to_address, timestamp, receipt_gas_used, receipt_effective_gas_price)
   - This reduced data size and allowed passing more events through Temporal
   - Workflow only tracks progress (block numbers), not event data
+- **Additional Workaround**:
+  - Reduced batchSize to minimum (1000 blocks), which triggers writes more frequently
+  - This helps but doesn't fully solve the problem for dense block ranges
+- **Possible Solution**:
+  - Perform database writes not as a separate activity, but immediately after fetching events within the fetch activity
+  - This would avoid passing events through Temporal workflow state entirely
 - **Potential Improvements**:
   - Use Temporal's `continueAsNew` more frequently to reset history size
   - Implement streaming/chunking at the activity level

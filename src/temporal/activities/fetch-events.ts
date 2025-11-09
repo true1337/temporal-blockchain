@@ -1,6 +1,7 @@
 // Activity: Fetching Transfer events from Ethereum
 import type { TransferEvent, FetchEventsParams } from './types.ts';
 import { getEthereumClient } from '../shared/ethereum-client.ts';
+import { saveToClickHouse } from './save-clickhouse.ts';
 
 
 /**
@@ -22,7 +23,7 @@ function* blockRanges(
 
 export async function fetchTransferEvents(
   params: FetchEventsParams
-): Promise<TransferEvent[]> {
+): Promise<number> {
   // Initialize client with automatic retry
   const ethereumClient = getEthereumClient();
   const eventAbi = params.eventAbi;
@@ -31,11 +32,20 @@ export async function fetchTransferEvents(
   const fromBlock = BigInt(params.fromBlock);
   const toBlock = BigInt(params.toBlock);
   
+  if (!params.tableName) {
+    throw new Error('tableName is required in FetchEventsParams but was not provided');
+  }
+  
   console.log(`📡 Fetching events from blocks ${fromBlock.toString()} - ${toBlock.toString()}`);
+  console.log(`📊 Table name: ${params.tableName}`);
   
   // RPC limit: maximum 1000 blocks per request
   const RPC_MAX_BLOCKS = 1000n;
-  const allEvents: TransferEvent[] = [];
+  let totalEventsCount = 0;
+  
+  // Buffer for saving events in batches to avoid Temporal 4MB limit
+  const SAVE_BATCH_SIZE = 1000;
+  let eventsBuffer: TransferEvent[] = [];
   
   // Generate ranges of 1000 blocks (like Python range)
   for (const [batchFrom, batchTo] of blockRanges(fromBlock, toBlock, RPC_MAX_BLOCKS)) {
@@ -50,7 +60,17 @@ export async function fetchTransferEvents(
         eventAbi
       );
       
-      allEvents.push(...batchEvents);
+      // Add events to buffer
+      eventsBuffer.push(...batchEvents);
+      totalEventsCount += batchEvents.length;
+      
+      // Save to ClickHouse when buffer reaches SAVE_BATCH_SIZE
+      // This avoids passing large arrays through Temporal workflow state
+      if (eventsBuffer.length >= SAVE_BATCH_SIZE) {
+        const toSave = eventsBuffer.splice(0, SAVE_BATCH_SIZE);
+        await saveToClickHouse(toSave, params.tableName);
+        console.log(`  💾 Saved ${toSave.length} events to ClickHouse (total: ${totalEventsCount})`);
+      }
       
       // Delay between batches to avoid rate limiting (increased)
       await new Promise(resolve => setTimeout(resolve, 2000)); // 2 seconds between batches
@@ -61,8 +81,15 @@ export async function fetchTransferEvents(
     }
   }
   
-  console.log(`✅ Total events fetched: ${allEvents.length}`);
-  return allEvents;
+  // Save remaining events in buffer
+  if (eventsBuffer.length > 0) {
+    await saveToClickHouse(eventsBuffer, params.tableName);
+    console.log(`  💾 Saved remaining ${eventsBuffer.length} events to ClickHouse`);
+  }
+  
+  console.log(`✅ Total events fetched and saved: ${totalEventsCount}`);
+  // Return count instead of events array to avoid exceeding Temporal 4MB limit
+  return totalEventsCount;
 }
 
 /**
