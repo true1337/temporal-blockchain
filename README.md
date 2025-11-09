@@ -48,8 +48,10 @@ npm install
 ```
 src/
 ├── temporal/          # Temporal workflows and activities
-├── ddl/              # ClickHouse DDL files
-└── config.ts         # Configuration loader
+│   ├── activities/   # Temporal activities (side-effect operations)
+│   └── shared/       # Shared utilities for activities (retry, ethereum client, DDL loader)
+├── ddl/              # ClickHouse DDL files and example queries
+└── config.ts         # Configuration loader from config.json and .env
 ```
 
 ## Configuration
@@ -57,6 +59,36 @@ src/
 - `config.json` - Wallet and contract addresses
 - `.env` - Environment variables (TEMPORAL_ADDRESS, CLICKHOUSE_URL)
 
+## Tasks
+
+### Data Processing
+- ✅ **Correctly handle pagination / block ranges, retries, and rate limits** - Implemented exponential backoff with jitter for RPC calls, block range pagination (1000 blocks per request), and automatic retry logic
+- ❌ **Currency rates fetching**
+
+### Idempotency
+- ⚠️ **Ensure idempotency (no duplicates when re-running the pipeline)** - Partially implemented using Temporal's deterministic workflow state, but relies on ReplacingMergeTree for deduplication which is not immediate
+
+
+### Data Analysis
+- ✅ **Data analysis** - Implemented
+
+### Storage
+- ✅ **ClickHouse + indexes on timestamps and addresses** - Implemented with proper table structure and indexes
+
+### Infrastructure
+- ✅ **docker-compose** - Implemented with Temporal and ClickHouse services
+
+### Monitoring
+- ❌ **Monitoring** - Not implemented yet
+
+## TODO
+
+- Think about idempotency
+- Implement database module, remove hardcoded DDL
+- Implement tests
+- Prettify `workflow.ts`, looks overloaded
+- little confidence that everything will work the way I want it to :D
+- Think of corner cases 
 
 ## Thoughts 
 
@@ -78,14 +110,14 @@ for small query ranges. This can lead to:
 When processing large batches of events, passing all events through workflow state can exceed this limit.
 - **Impact**: 
   - Cannot pass large arrays of events directly from activity to workflow
-  - Must save data in smaller batches (currently 500 events per batch)
-  - Adds complexity to batch processing logic
+  - Requires optimization to reduce data size
 - **Current Solution**: 
-  - Events are saved to ClickHouse in batches of 500 within the activity
+  - Workaround: removed fields not used in analysis from the table
+  - Kept only necessary fields: keys (block_number, transaction_hash) and fields for data analysis (from_address, to_address, timestamp, receipt_gas_used, receipt_effective_gas_price)
+  - This reduced data size and allowed passing more events through Temporal
   - Workflow only tracks progress (block numbers), not event data
 - **Potential Improvements**:
   - Use Temporal's `continueAsNew` more frequently to reset history size
-  - Consider using external storage (S3, database) for large payloads
   - Implement streaming/chunking at the activity level
   - Increase message size limit in Temporal configuration (requires server-side changes)
 - **Status**: Workaround implemented, but limits batch processing efficiency.

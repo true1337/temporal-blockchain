@@ -2,11 +2,6 @@
 export { fetchTransferEvents } from './fetch-events.ts';
 export { saveToClickHouse } from './save-clickhouse.ts';
 export { createTransactionsTable } from '../shared/load-ddl.ts';
-export { 
-  createStateTable, 
-  getLastProcessedBlock, 
-  saveLastProcessedBlock 
-} from './state.ts';
 export { getCurrentBlock } from './get-current-block.ts';
 
 // Export common types

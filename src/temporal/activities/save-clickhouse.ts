@@ -15,32 +15,17 @@ export async function saveToClickHouse(
   });
   
   try {
-    console.log(`💾 Saving ${events.length} raw transactions to ClickHouse`);
-    // ReplacingMergeTree automatically deduplicates by ORDER BY (transaction_hash, block_number)
-    // during merge operations, so DELETE is not required
-    // Prepare data for insertion (all fields from receipt)
+    console.log(`💾 Saving ${events.length} transactions to ClickHouse`);
+    // Prepare data for insertion (only fields needed for key and data analysis)
     const values = events.map(e => ({
       block_number: Number(e.blockNumber),
       transaction_hash: e.transactionHash,
       from_address: e.from,
       to_address: e.to,
-      value: e.value,
       timestamp: new Date(Number(e.timestamp) * 1000),
-      
-      // Fields from receipt
-      receipt_block_hash: e.receipt.blockHash,
-      receipt_block_number: Number(e.receipt.blockNumber),
-      receipt_contract_address: e.receipt.contractAddress,
-      receipt_cumulative_gas_used: Number(e.receipt.cumulativeGasUsed),
-      receipt_effective_gas_price: e.receipt.effectiveGasPrice,
-      receipt_from: e.receipt.from,
       receipt_gas_used: Number(e.receipt.gasUsed),
-      receipt_logs_bloom: e.receipt.logsBloom,
-      receipt_status: e.receipt.status,
-      receipt_to: e.receipt.to,
-      receipt_transaction_index: Number(e.receipt.transactionIndex),
-      receipt_type: e.receipt.type,
-      receipt_logs: JSON.stringify(e.receipt.logs), // Logs as JSON string
+      receipt_effective_gas_price: e.receipt.effectiveGasPrice,
+      updated_at: new Date(),
     }));
     
     // Insert data in batches for efficiency
@@ -55,8 +40,7 @@ export async function saveToClickHouse(
       });
     }
     
-    console.log(`✅ Raw data saved to ClickHouse (${values.length} records)`);
-    console.log(`ℹ️  Using ReplacingMergeTree - deduplication will occur automatically during merge`);
+    console.log(`✅ Data saved to ClickHouse (${values.length} records)`);
     
   } catch (error) {
     console.error(`❌ Error saving to ClickHouse:`, error);

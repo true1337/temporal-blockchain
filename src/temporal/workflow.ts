@@ -4,12 +4,9 @@ import { parseAbiItem } from 'viem';
 import * as activities from './activities/index.ts';
 
 // Register activities with different timeouts
-// Fast activities (DDL, state)
+// Fast activities (DDL)
 const {
   createTransactionsTable,
-  createStateTable,
-  getLastProcessedBlock,
-  saveLastProcessedBlock,
   getCurrentBlock
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: '5 minutes',
@@ -37,7 +34,8 @@ const {
 export type TransferExportParams = {
   walletAddress: string;
   usdcContractAddress: string;
-  initialFromBlock?: string; // Initial block for first run (optional)
+  lastProcessedBlock?: string; // Last processed block (deterministic state from workflow)
+  initialFromBlock?: string; // Initial block for first run (fallback if lastProcessedBlock not provided)
   batchSize?: number; // Batch size of blocks to process (default 10000)
 };
 
@@ -50,19 +48,25 @@ export async function exportTransferEventsWorkflow(
   
   // Create tables (once at the beginning)
   await createTransactionsTable();
-  await createStateTable();
   
-  // Get last processed block or use initialFromBlock
-  let lastProcessedBlock = await getLastProcessedBlock(params.walletAddress);
-  if (!lastProcessedBlock && params.initialFromBlock) {
+  // Use deterministic workflow state (from parameters) - no DB reads needed
+  // This ensures idempotency - workflow always knows exact state from its history
+  let lastProcessedBlock: string;
+  
+  if (params.lastProcessedBlock) {
+    // Use state from workflow parameters (deterministic)
+    lastProcessedBlock = params.lastProcessedBlock;
+    console.log(`📌 Using deterministic state: block ${lastProcessedBlock}`);
+  } else if (params.initialFromBlock) {
+    // First run: use initialFromBlock
     lastProcessedBlock = params.initialFromBlock;
-  }
-  if (!lastProcessedBlock) {
-    throw new Error('initialFromBlock is not specified and no saved state found');
+    console.log(`📌 First run: starting from block ${lastProcessedBlock}`);
+  } else {
+    throw new Error('Either lastProcessedBlock or initialFromBlock must be provided');
   }
   
   let currentBlock = BigInt(lastProcessedBlock);
-  const batchSize = BigInt(params.batchSize || 10000);
+  const batchSize = BigInt(params.batchSize || 5000);
   let iteration = 0;
   
   // Infinite loop for processing new blocks
@@ -91,20 +95,14 @@ export async function exportTransferEventsWorkflow(
         });
         
         if (events.length > 0) {
-          // Save raw data to ClickHouse in smaller batches to avoid Temporal message size limits (4MB default)
-          // ReplacingMergeTree automatically deduplicates by (transaction_hash, block_number)
-          const saveBatchSize = 500; // Save 500 events at a time to stay under message size limit
-          for (let i = 0; i < events.length; i += saveBatchSize) {
-            const batch = events.slice(i, i + saveBatchSize);
-            await saveToClickHouse(batch);
-          }
+          // Save events to ClickHouse
+          await saveToClickHouse(events);
           console.log(`✅ Processed ${events.length} events from blocks ${currentBlock.toString()} - ${actualToBlock.toString()}`);
         }
         
-        // Save progress
+        // Update progress (deterministic state - no DB write needed)
         currentBlock = actualToBlock;
-        await saveLastProcessedBlock(params.walletAddress, currentBlock.toString());
-        console.log(`💾 Progress saved: last processed block ${currentBlock.toString()}`);
+        console.log(`✅ Progress updated: last processed block ${currentBlock.toString()}`);
         
       } catch (error) {
         console.error(`❌ Error in batch ${currentBlock.toString()}-${actualToBlock.toString()}:`, error);
@@ -115,10 +113,17 @@ export async function exportTransferEventsWorkflow(
     }
     
     // Continue-as-new every iteration (to avoid accumulating history)
+    // Pass lastProcessedBlock as deterministic state (not initialFromBlock)
+    // Note: workflowId cannot be changed in continueAsNew, it remains the same from initial start
+    // The workflowId includes the initial block: usdc-export-{walletAddress}-{initialBlock}
     console.log(`🔄 Executing continue-as-new after iteration ${iteration}`);
+    console.log(`📊 Current block range: ${currentBlock.toString()} (last processed)`);
+    
     await continueAsNew<typeof exportTransferEventsWorkflow>({
       ...params,
-      initialFromBlock: currentBlock.toString(),
+      lastProcessedBlock: currentBlock.toString(), // Deterministic state
+      // Remove initialFromBlock after first run - it's no longer needed
+      initialFromBlock: undefined,
     });
     return;
   }

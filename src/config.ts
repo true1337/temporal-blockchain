@@ -22,6 +22,10 @@ type Config = {
   clickhouse: {
     database: string;
   };
+  workflow: {
+    initialFromBlock: string;
+    batchSize: number;
+  };
 };
 
 let cachedConfig: Config | null = null;
@@ -99,5 +103,19 @@ export function getTemporalTaskQueue(): string {
  */
 export function getNetworkName(): string {
   return loadConfig().network.name;
+}
+
+/**
+ * Получает начальный блок для workflow из конфига
+ */
+export function getInitialFromBlock(): string {
+  return loadConfig().workflow.initialFromBlock;
+}
+
+/**
+ * Получает размер батча для обработки блоков из конфига
+ */
+export function getBatchSize(): number {
+  return loadConfig().workflow.batchSize;
 }
 

@@ -6,7 +6,9 @@ import {
   getTemporalTaskQueue, 
   getTemporalNamespace,
   getWalletAddress,
-  getUsdcContractAddress
+  getUsdcContractAddress,
+  getInitialFromBlock,
+  getBatchSize
 } from '../config.ts';
 
 async function startWorkflow() {
@@ -31,16 +33,17 @@ async function startWorkflow() {
   const params = {
     walletAddress,
     usdcContractAddress,
-    initialFromBlock: '23534906', // Initial block for first run (string for serialization)
-    batchSize: 10000, // Process 10k blocks at a time
+    initialFromBlock: getInitialFromBlock(), // Initial block for first run (from config.json)
+    batchSize: getBatchSize(), // Batch size from config.json
   };
 
   console.log('🚀 Starting Transfer events export workflow...');
   console.log('Parameters:', params);
 
-  // Start workflow with fixed ID for one address
-  // If workflow is already running, it will be continued
-  const workflowId = `usdc-export-${walletAddress}`;
+  // Start workflow with ID that includes block range
+  // Format: usdc-export-{walletAddress}-{fromBlock}
+  const initialBlock = params.initialFromBlock;
+  const workflowId = `usdc-export-${walletAddress}-${initialBlock}`;
   const handle = await client.workflow.start(exportTransferEventsWorkflow, {
     args: [params],
     taskQueue,
